@@ -1,0 +1,209 @@
+package com.kingtest.crypto;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.ObjectOutputStream;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
+import java.util.Date;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Header;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import java.security.Key;
+import java.security.KeyFactory;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.ResourceUtils;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kingtest.entities.User;
+
+@Service
+public class JwtService {    
+    // public Key key = getPrivateKey();
+
+    @Value("${kid}")
+    private String kid;
+
+    @Value("${key_file_name}")
+    private String keyFileName;
+
+    @Value("${secret_key}")
+    private String localSecretKey;
+
+    private Key jwtKey = loadKey();
+
+    private SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
+
+    private ObjectMapper oMapper = new ObjectMapper();
+
+    private PrivateKey getPrivateKey() {
+        PrivateKey privKey = null;
+        try {
+            KeyGenerator keyGenerator = KeyGenerator.getInstance("AES"); // Or any other algorithm
+            keyGenerator.init(256); // Key size (you can adjust it as needed)
+            SecretKey secretKey = keyGenerator.generateKey();
+            byte[] encoded = secretKey.getEncoded();
+
+
+            //String pKey = loadPkey();
+
+            //byte[] encoded = org.apache.commons.codec.binary.Base64.decodeBase64(pKey);
+
+            //KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            //PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
+            //privKey = keyFactory.generatePrivate(keySpec);
+            
+
+        } catch (Exception privateKey) {
+            privateKey.printStackTrace();
+            System.out.println("Error: " + privateKey.getMessage());
+        }
+        return privKey;
+    }
+
+    private Key loadKey(){
+        SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
+
+        long nowMillis = System.currentTimeMillis();
+        Date now = new Date(nowMillis);
+
+        //We will sign our JWT with our ApiKey secret
+        byte[] apiKeySecretBytes = DatatypeConverter.parseBase64Binary(localSecretKey);
+        Key signingKey = new SecretKeySpec(apiKeySecretBytes, signatureAlgorithm.getJcaName());
+
+        return signingKey;
+    }
+    //#region /**  
+    private String loadPkey1() {
+
+        String pkey = null;
+
+        try {
+            // pkey = """
+            // -----BEGIN OPENSSH PRIVATE KEY-----
+            // b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABlwAAAAdzc2gtcn
+            // NhAAAAAwEAAQAAAYEAnaF8dEMsE9THJZUMjYrbas7JPcwNFAbT4O8UbS+swBqKBJidEXl7
+            // GrMAIxaFrDQKHli94AhXqP4DG8f6TQJojsmadUtS3j4uM+YdcN5GplUARK2zK/O2D66qSa
+            // 4qsYlwpvxXOe9J3jv1RoFHLGXWsrGofYtdxKNUQ+CZ1YiPF6YarT7Tk1wXgAWJMgbMzmgp
+            // GcCPOkvKi6KsxyNlXlHCQe+YmxHpAmLLyjws7WvhhH377Wku6Sh8evjLHZRtc4WrqraOeT
+            // qodmENV1fpM/J/7hKiJ3pZjc5b5Au+RSESzB0UNmeQ//XQ9LPuOX6ZNj/GCs2F8Ep/mtS9
+            // yrS8jonQEOE71vwr5wHEVYAi/0noe+9Ay9G7cfsJFwCqVBjGy70BpHDZdLzktDXd0E4MwD
+            // VzUmcFVUfQtv6cSFwKnJJ1OFqx+GmNrVPmDIWnT14v0sVXGKKiajPEDo0Pvpe9YUuTbr6K
+            // Xg5fTyyHHNehKj7mQE5UaaQmHwqOXe/WVPQAAIFVAAAFmIhFzb+IRc2/AAAAB3NzaC1yc2
+            // EAAAGBAJ2hfHRDLBPUxyWVDI2K22rOyT3MDRQG0+DvFG0vrMAaigSYnRF5exqzACMWhaw0
+            // Ch5YveAIV6j+AxvH+k0CaI7JmnVLUt4+LjPmHXDeRqZVAEStsyvztg+uqkmuKrGJcKb8Vz
+            // nvSd479UaBRyxl1rKxqH2LXcSjVEPgmdWIjxemGq0+05NcF4AFiTIGzM5oKRnAjzpLyoui
+            // rMcjZV5RwkHvmJsR6QJiy8o8LO1r4YR9++1pLukofHr4yx2UbXOFq6q2jnk6qHZhDVdX6T
+            // Pyf+4Soid6WY3OW+QLvkUhEswdFDZnkP/10PSz7jl+mTY/xgrNhfBKf5rUvcq0vI6J0BDh
+            // O9b8K+cBxFWAIv9J6HvvQMvRu3H7CRcAqlQYxsu9AaRw2XS85LQ13dBODMA1c1JnBVVH0L
+            // b+nEhcCpySdThasfhpja1T5gyFp09eL9LFVxiiomozxA6ND76XvWFLk26+il4OX08shxzX
+            // oSo+5kBOVGmkJh8Kjl3v1lT0AACBVQAAAAMBAAEAAAGAGt3FOoOgZZjkgHFQ/GboUuH/xr
+            // qamAk536KgFqQDi5J6Z6IjUzEjXD+aDGDwU5NjDh0N77s8RZ9VpEyHSszYSU3vN4KpExwB
+            // //J+nhgkboEaVJpOaXVWWIHqoDhBKpVEUBG+RC+WpXwOp/+sw9Jvr3E8SHmSd8tmt1L2pU
+            // BrMxqqfVCx+vG9R6Kp6Y7jJWL3bl41izgTw4zsadyMkHDa7SYLGpMI5dE07rkm5yh1/YED
+            // iUleJ3sxDDyPUfFUXlYv0aLzGAmq+w+vvbEpLBGnvmrmMGRpoMT/WmCKLcK1MURg0Uhgp6
+            // BwQhUk2AJjKQdptiYrUOI8PhuB4baLvuQqYU2Yc6PhlMayS05U6rNWSZ7k7GUH+10WzhxV
+            // VRa+CSgCtyJxLk4t2lc5mWUyzkOSE+UOk2RVwtmuBZYLIZFlCFjVX9DRx7lUtyg/QSUU5V
+            // a+NrASw888xSQiBH43hMQExh+G6KLHHPfepJgQtgmQofcon6Pu1xGiG4AzqE+/m/MBAAAA
+            // wQCNZOR6ZeizBm0l+w4trFgAlQIHeDYkgG/tG/7yo3pHrfz++HdPSdjAzeg/MJAMDyBqci
+            // wx4hCW44wS/R3slMSCuWYTg1vsIHP60d6oUJOHSafE8uOYOKtsSB/HB25PXrecFr+bo/TU
+            // FFdoYyqEfoMyGdmslmaLZkQxuAsLSN6iYK2Tlg804VkY5zVCR+ORgEIaq21Mvdv4TbSkzI
+            // RSwMWPtf8I8Dq4wcD1rIk+in8sM9MbXTdLbzDBiQV2IcPP5UMAAADBAMvSk8K+gDer78E+
+            // XqvUlkUTLGnCZWJgxXEQDi6VeY3hLaSVshRARxXoqh1ul1J1HEq/sHyXPC9olbRUJ8iBBK
+            // XCkSgYs5wwB4GVk/AXD5TJCxrXnPx3lwaNouTW/l+1DUWpKKHqvkbAr7n5xQZWYpjsACTM
+            // OGw6yuBMx6oEqncbxmwvrUFNk9Up1JhQpS+uKORdunEW0fts1ltRwxk0QEe85LODOQLlxA
+            // 00H+4ZUMyp+C5dWIvvpx1O+hAjh5ev4QAAAMEAxfvAheFXk/L6KyQn0PqTn0/Ap7P3KvST
+            // NYSi4U7jdDGtU67mBn+uwda0PxmDwnR48ZtMmqwKhyjeN0dKn0IbjcXuih6eF8AclNSBj0
+            // L1kzHLRiHCaL8HpiCI+77wKkD6k+ysiyV6b1uyLOiatBZWRYhZG1S+lazs4TSaLy8rqQwA
+            // Y4SxJskG5Q8g1dkC52VjhpYBI+zB7+b+MqKFvcP1LuIt4+SVXfJuQHwZ0v2BwKcwTSPo9l
+            // TcOb7nKpA1Zw/1AAAAHmxpdHRsZSBnaG9zdEBCdXJlYWwtb2YtQ29udHJvbAECAwQ=
+            // -----END OPENSSH PRIVATE KEY-----"
+            // """;
+            
+            File file = ResourceUtils.getFile("classpath:private.key");
+
+            //Read File Content
+            String content = new String(Files.readAllBytes(file.toPath()));
+            //System.out.println(content);
+
+            pkey = content;
+            pkey = pkey.replace("-----BEGIN RSA PRIVATE KEY-----", "");
+            pkey = pkey.replace("-----END RSA PRIVATE KEY-----", "");
+            pkey = pkey.replaceAll(System.lineSeparator(), "");
+            pkey = pkey.replaceAll("\n", "");
+            System.out.println(pkey);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return pkey;
+    }
+    //#endregion 
+    public String makeBodyJwt (User user) {
+        // Map<String, Object> claims = oMapper.convertValue(user, new TypeReference<Map<String, Object>>() {
+        // });
+
+        // String jws = Jwts.builder()
+        //         .setClaims(claims)
+        //         .signWith(key, SignatureAlgorithm.forName("PS256"))
+        //         .setHeaderParam("kid", kid)
+        //         .setHeaderParam("typ", Header.JWT_TYPE).compact();
+
+        // String SECRET_KEY = "oeRaYY7Wo24sDqKSX3IM9ASGmdGPmkTd9jo1QTy4b7P9Ze5_9hKolVX8xNrQDcNRfVEdTZNOuOyqEGhXEbdJI-ZQ19k_o9MI0y3eZN2lp9jow55FfXMiINEdt1XR85VipRLSOkT6kSpzs2x-jbLDiz9iFVzkd81YKxMgPA7VfZeQUm4n-mOmnWMaVX30zGFU4L3oPBctYKkl4dYfqYWqRNfrgPJVi5DGFjywgxx0ASEiJHtV72paI3fDR2XwlSkyhhmY-ICjCRmsJN4fX1pdoL8a18-aQrvyu4j0Os6dVPYIoPvvY0SAZtWYKHfM15g7A3HD4cVREf9cUsprCRK93w";
+
+        //    //The JWT signature algorithm we will be using to sign the token
+        SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
+
+        long nowMillis = System.currentTimeMillis();
+        Date now = new Date(nowMillis);
+
+        //We will sign our JWT with our ApiKey secret
+        // byte[] apiKeySecretBytes = DatatypeConverter.parseBase64Binary(SECRET_KEY);
+        // Key signingKey = new SecretKeySpec(apiKeySecretBytes, signatureAlgorithm.getJcaName());
+
+        //Let's set the JWT Claims
+        JwtBuilder builder = Jwts.builder()
+                .setId(UUID.randomUUID().toString())
+                .setIssuedAt(now)
+                .setSubject(user.getUsername())
+                .setIssuer(user.getEmail())
+                .signWith(jwtKey, signatureAlgorithm);
+    
+        //Builds the JWT and serializes it to a compact, URL-safe string
+        return builder.compact();
+
+        //return jws;
+    }
+
+    public String generateJwtFromUser(User user) throws Exception{
+        byte[] userByes = convertUserToByteArray(user);
+        String encodedUser = Base64.getEncoder().encodeToString(userByes);
+        return encodedUser;
+    }
+
+    private byte[] convertUserToByteArray(User user) throws Exception {
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+      ObjectOutputStream oos = new ObjectOutputStream(bos);
+      oos.writeObject(user);
+      oos.flush();
+      byte [] data = bos.toByteArray();
+      return data;
+   }
+}
